@@ -1,0 +1,20 @@
+services:
+  cv2-web-sample:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      network: host
+    image: ${DOCKER_HUB_USERNAME:-namth274}/cv2-web-sample:latest
+    network_mode: host
+    volumes:
+      - ./main_config.yaml:/project/main_config.yaml:ro
+      - ./resources:/project/resources
+      - ./logs:/project/logs
+    environment:
+      - CONFIG_PATH=/project/main_config.yaml
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"

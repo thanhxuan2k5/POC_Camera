@@ -1,0 +1,24 @@
+# Web
+fastapi>=0.104.0
+uvicorn>=0.24.0
+python-multipart>=0.0.6
+python-jose[cryptography]>=3.3.0
+aiofiles>=23.0.0
+
+# Database
+sqlalchemy>=2.0.0
+
+# AI/ML
+ultralytics>=8.0.0
+torch>=2.0.0
+torchvision>=0.15.0
+opencv-python>=4.8.0
+numpy>=1.24.0
+scipy>=1.10.0
+
+# MQTT
+paho-mqtt>=2.0.0
+
+# Utilities
+pyyaml>=6.0
+pillow>=10.0.0

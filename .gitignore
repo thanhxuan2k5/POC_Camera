@@ -1,0 +1,27 @@
+# Python / virtual‑env
+venv/
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+# Dữ liệu lớn / model tạm thời
+data/
+*.engine               # sẽ được tạo trên Jetson, không cần đẩy lên
+*.npy                  # embeddings chỉ giữ trên Jetson
+# Caches / logs
+*.log
+*.sqlite
+*.db
+*.DS_Store
+# IDE / cấu hình cá nhân
+.vscode/
+.idea/
+*.iml
+# Docker / CI artefacts
+docker-compose.*.yml
+Dockerfile
+Dockerfile.jetson
+docker-compose.jetson.yml
+# Thư mục tạm thời
+tmp/
+*.tmp

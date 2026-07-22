@@ -1,0 +1,9 @@
+{
+    "model_path": "resources/weights/yolo11s_evn_vehicle_0607.pt",
+    "img_size": 640,
+    "conf_threshold": 0.5,
+    "agnostic_nms": true,
+    "half": false,
+    "device": "0",
+    "classes": ["EXCAVATORS", "dump truck", "wheel loader"]
+}

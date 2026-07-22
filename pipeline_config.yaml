@@ -1,0 +1,63 @@
+general:
+  timezone: "Asia/Ho_Chi_Minh"
+  log_level: "INFO"
+  log_dir: "logs"
+  data_dir: "data"
+
+camera:
+  default_rtsp_url: "rtsp://admin:admin@192.168.1.100:554/stream1"
+  frame_width: 640
+  frame_height: 480
+  frame_skip: 2
+  reconnect_delay: 5
+
+detection:
+  model_path: "yolo11n_poc_classification_2107.pt"
+  confidence_threshold: 0.3
+  device: "cpu"  # 'cpu' or '0' for GPU
+  img_size: 640
+
+embedding:
+  model_name: "mobilenet_v3_small"
+  device: "cpu"
+  input_size: 224
+  normalize: true
+
+classification:
+  similarity_threshold: 0.6
+  reference_dir: "data/references"
+  embeddings_dir: "data/embeddings"
+  use_centroid: true
+  top_k: 5
+
+tracker:
+  max_disappeared: 5
+  max_distance: 250
+  decision_line_y: 0.75  # normalized y position (0=top, 1=bottom)
+
+mqtt:
+  broker: "127.0.0.1"
+  port: 1883
+  username: ""
+  password: ""
+  result_topic: "conveyor/camera/{camera_id}/result"
+  status_topic: "conveyor/camera/{camera_id}/status"
+  signal_topic: "conveyor/signal/output"
+
+web:
+  host: "0.0.0.0"
+  port: 8081
+  secret_key: "wood-token-inspection-secret-key-2026"
+  default_username: "admin"
+  default_password: "admin123"
+  token_expire_hours: 24
+
+event_logging:
+  save_images: true
+  image_quality: 85
+  events_dir: "data/events"
+  max_events_days: 30
+
+debugging:
+  save_cropped_objects: true
+  cropped_objects_dir: "data/debug/cropped"

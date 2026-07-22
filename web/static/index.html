@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wood Token Inspection System</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <!-- Main App -->
+    <div id="toast-container"></div>
+    <div id="modal-overlay" class="modal-overlay hidden">
+        <div class="modal-content glass-panel" id="modal-content">
+            <button class="modal-close" id="modal-close-btn">&times;</button>
+            <div id="modal-body"></div>
+        </div>
+    </div>
+    <div class="app-container">
+        <!-- Sidebar and Main Content... -->
+        <aside class="sidebar glass-panel" id="main-sidebar">
+            <div class="sidebar-header">
+                <img src="/static/img/logo.png" alt="Logo" class="sidebar-logo">
+                <button class="sidebar-toggle-btn" id="sidebar-toggle" title="Toggle Sidebar">☰</button>
+            </div>
+            <nav class="sidebar-nav">
+                <a href="#dashboard" class="nav-item active" data-target="dashboard"><span class="nav-icon">📊</span><span class="nav-label">Dashboard</span></a>
+                <a href="#live" class="nav-item" data-target="live"><span class="nav-icon">📹</span><span class="nav-label">Live View</span></a>
+                <a href="#fileinfer" class="nav-item" data-target="fileinfer"><span class="nav-icon">🖼️</span><span class="nav-label">File Inference</span></a>
+                <a href="#cameras" class="nav-item" data-target="cameras"><span class="nav-icon">📷</span><span class="nav-label">Cameras</span></a>
+                <a href="#training" class="nav-item" data-target="training"><span class="nav-icon">🧠</span><span class="nav-label">Training</span></a>
+                <a href="#models" class="nav-item" data-target="models"><span class="nav-icon">🔧</span><span class="nav-label">Models</span></a>
+                <a href="#events" class="nav-item" data-target="events"><span class="nav-icon">📋</span><span class="nav-label">Events</span></a>
+            </nav>
+            <div class="sidebar-footer"><div class="status-indicator"><span id="global-pipeline-status" class="dot stopped"></span><span id="global-pipeline-text">System Idle</span></div></div>
+        </aside>
+        <main class="main-content">
+            <!-- All page sections go here -->
+            <section id="live" class="page-section">
+                <header class="section-header">
+                    <h1>Live View</h1>
+                    <div class="header-actions">
+                        <button id="btn-start-pipeline" class="btn btn-primary">▶ Start</button>
+                        <button id="btn-stop-pipeline" class="btn btn-danger" style="display:none;">⏹ Stop</button>
+                    </div>
+                </header>
+                <div class="live-layout">
+                    <div class="live-main">
+                        <div class="video-container glass-panel">
+                            <canvas id="live-canvas" width="1280" height="720"></canvas>
+                            <div class="no-signal-msg" id="no-signal-msg"><span class="icon">📡</span><p>No Signal or Pipeline Stopped</p></div>
+                        </div>
+                        <!-- NG Log Panel -->
+                        <div class="ng-log-panel glass-panel mt-4" style="padding: 1rem; max-height: 250px; overflow-y: auto;">
+                            <h3 style="margin-bottom: 0.5rem;"><span class="text-danger">⚠</span> Recent NG Events</h3>
+                            <div class="ng-log-container" id="ng-log-container" style="display: flex; gap: 1rem; flex-wrap: wrap;">
+                                <p class="text-secondary" id="ng-empty-msg">No errors detected.</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="live-sidebar glass-panel">
+                        <h3>Controls</h3>
+                        <div class="form-group"><label>Camera Source</label><select id="live-camera-select" class="form-input"></select></div>
+                        <div class="form-group"><label>Inference Model</label><select id="live-model-select" class="form-input"></select></div>
+                        <div class="divider"></div>
+                        <h3>Live Settings</h3>
+                        <div class="form-group"><label>Confidence Threshold (<span id="live-conf-val">0.5</span>)</label><input type="range" id="live-conf-thresh" min="0.1" max="0.99" step="0.01" value="0.5" class="range-slider"></div>
+                        <div class="form-group"><label>Similarity Threshold (<span id="live-sim-val">0.85</span>)</label><input type="range" id="live-sim-thresh" min="0.5" max="0.99" step="0.01" value="0.85" class="range-slider"></div>
+                        <div class="divider"></div>
+                        <h3>Live Stats</h3>
+                        <div class="live-stat-row"><span>Status</span><strong id="live-status" class="text-secondary">Stopped</strong></div>
+                        <div class="live-stat-row"><span>FPS</span><strong id="live-fps">0</strong></div>
+                    </div>
+                </div>
+            </section>
+            <section id="cameras" class="page-section"><header class="section-header"><h1>Cameras</h1><button class="btn btn-primary" id="btn-add-camera">+ Add Camera</button></header><div class="glass-panel"><div class="table-responsive"><table class="data-table"><thead><tr><th>ID</th><th>Name</th><th>RTSP URL</th><th>Status</th><th>Actions</th></tr></thead><tbody id="cameras-body"></tbody></table></div></div></section>
+                <section id="dashboard" class="page-section active">
+                <header class="section-header"><h1>Dashboard</h1></header>
+                <div class="glass-panel" id="dashboard-stats"><p>Loading dashboard stats...</p></div>
+                <div class="glass-panel mt-4" style="max-width: 600px; margin: 2rem auto;">
+                    <canvas id="statsChart" width="400" height="250"></canvas>
+                </div>
+            </section>
+                <section id="fileinfer" class="page-section">
+                    <header class="section-header"><h1>File Inference</h1></header>
+                    <div class="glass-panel" style="padding: 1.5rem;">
+                        <div class="form-group" style="max-width: 300px;">
+                            <label>Select Model</label>
+                            <select id="file-model-select" class="form-input"></select>
+                        </div>
+                        <div class="form-group">
+                            <label>Upload File (Image/Video)</label>
+                            <input type="file" id="file-input" multiple accept="image/*,video/*" class="form-input" style="max-width: 400px; display: inline-block;">
+                            <button class="btn btn-primary" id="btn-upload">Upload & Run</button>
+                        </div>
+                        <div id="file-results" class="mt-4"></div>
+                    </div>
+                </section>
+                <section id="training" class="page-section">
+                    <header class="section-header"><h1>Training</h1></header>
+                    <div class="glass-panel" style="padding: 1.5rem;">
+                        <div class="form-group" style="max-width: 400px;">
+                            <label>Model Name (Optional)</label>
+                            <input type="text" id="train-model-name" class="form-input" placeholder="e.g. Model_V2_OK">
+                        </div>
+                        <div class="form-group">
+                            <label>Upload OK Images (References)</label>
+                            <input type="file" id="train-file-input" multiple accept="image/*" class="form-input" style="max-width: 400px;">
+                        </div>
+                        <button class="btn btn-primary" id="btn-train">Upload & Train</button>
+                        <div id="train-results" class="mt-4"></div>
+                    </div>
+                </section>
+                <section id="models" class="page-section">
+                    <header class="section-header"><h1>Models</h1></header>
+                    <div class="glass-panel">
+                        <table class="data-table">
+                            <thead><tr><th>ID</th><th>Name</th><th>Type</th><th>Active</th><th>Action</th></tr></thead>
+                            <tbody id="models-body"></tbody>
+                        </table>
+                    </div>
+                </section>
+                <section id="events" class="page-section">
+                    <header class="section-header">
+                        <h1>Events</h1>
+                        <div class="header-actions">
+                            <button class="btn btn-danger" id="btn-delete-selected">Delete Selected</button>
+                            <button class="btn btn-danger" id="btn-delete-all">Delete All</button>
+                        </div>
+                    </header>
+                    <div class="glass-panel" id="events-container"><p>Event logs will appear here.</p></div>
+                </section>
+        </main>
+    </div>
+
+    <!-- Debug panel removed based on user request -->
+
+    <script src="/static/js/app.js"></script>
+</body>
+</html>
