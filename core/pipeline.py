@@ -173,10 +173,11 @@ class InspectionPipeline:
                 # 2. Area 2: Make final decision and broadcast
                 for track in self.tracker.get_tracks_needing_final_decision():
                     if len(track.votes) > 0:
-                        # Majority vote
-                        ok_count = sum(1 for v in track.votes if v['result'] == 'OK')
-                        ng_count = sum(1 for v in track.votes if v['result'] == 'NG')
-                        final_res = 'OK' if ok_count >= ng_count else 'NG'
+                        # Thay vì Majority Vote, ta dùng MAX Similarity.
+                        # Vì trong Anomaly Detection, nếu có ít nhất 1 frame có độ tự tin cao (vật thể hiển thị rõ nhất)
+                        # thì đó là hàng OK. Các frame mờ/nhòe sẽ kéo tụt kết quả nếu dùng Majority.
+                        best_vote = max(track.votes, key=lambda v: v['similarity'])
+                        final_res = best_vote['result']
                     else:
                         # Fallback if no votes collected (e.g. moved too fast)
                         cropped = self.detector.crop_detection(frame, track.bbox, padding=0.15)
@@ -206,9 +207,9 @@ class InspectionPipeline:
                         import base64
                         b64_img = base64.b64encode(buf).decode('utf-8')
                         
-                        # Calculate avg similarity for UI
+                        # Use the best vote's similarity for UI
                         if track.votes:
-                            avg_sim = np.mean([v['similarity'] for v in track.votes if v['result'] == final_res]) if any(v['result'] == final_res for v in track.votes) else 0.0
+                            avg_sim = best_vote['similarity']
                         else:
                             avg_sim = cls_res['similarity'] if 'cls_res' in locals() else 0.0
                             
