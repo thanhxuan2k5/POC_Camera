@@ -1,0 +1,24 @@
+version: "3.8"
+
+services:
+  ai-inspection:
+    build:
+      context: .
+      dockerfile: Dockerfile.jetson
+      # Dùng host network khi BUILD để pip có thể tải gói từ Internet
+      network: host
+    container_name: poc-camera-jetson
+    # Bắt buộc để container truy cập GPU CUDA trên Jetson
+    runtime: nvidia
+    # Dùng host network khi RUN để kết nối RTSP camera và mở port dễ dàng
+    network_mode: host
+    volumes:
+      # Mount data ra ngoài để không mất dữ liệu khi xoá/rebuild container
+      - ./data:/app/data
+      # Mount source code để update code Python/HTML mà không cần build lại Image
+      - ./core:/app/core
+      - ./web:/app/web
+      - ./run.py:/app/run.py
+    environment:
+      - TZ=Asia/Ho_Chi_Minh
+    restart: unless-stopped
