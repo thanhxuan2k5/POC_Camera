@@ -37,6 +37,10 @@ def list_models(db: Session = Depends(get_db)):
 
 @router.post("/upload", response_model=ModelResponse)
 async def upload_model(name: str = Form(...), type: str = Form(...), format: str = Form(...), file: UploadFile = File(...), db: Session = Depends(get_db)):
+    existing = db.query(Model).filter(Model.name == name).first()
+    if existing:
+        raise HTTPException(status_code=400, detail=f"Model name '{name}' already exists.")
+
     file_path = os.path.join(MODELS_DIR, file.filename)
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
@@ -46,6 +50,25 @@ async def upload_model(name: str = Form(...), type: str = Form(...), format: str
     db.commit()
     db.refresh(db_model)
     return db_model
+
+class ModelUpdate(BaseModel):
+    name: str
+
+@router.put("/{model_id}", response_model=ModelResponse)
+def update_model(model_id: int, model_update: ModelUpdate, db: Session = Depends(get_db)):
+    model = db.query(Model).filter(Model.id == model_id).first()
+    if not model:
+        raise HTTPException(status_code=404, detail="Model not found")
+        
+    if model.name != model_update.name:
+        existing = db.query(Model).filter(Model.name == model_update.name).first()
+        if existing:
+            raise HTTPException(status_code=400, detail=f"Model name '{model_update.name}' already exists.")
+            
+    model.name = model_update.name
+    db.commit()
+    db.refresh(model)
+    return model
 
 @router.post("/{model_id}/activate")
 def activate_model(model_id: int, db: Session = Depends(get_db)):

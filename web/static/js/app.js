@@ -341,7 +341,11 @@ class App {
                 <td>${m.name}</td>
                 <td>${m.type}</td>
                 <td>${m.is_active ? '✅ Active' : '—'}</td>
-                <td><button class="btn btn-sm btn-primary" onclick="app.activateModel(${m.id})">Activate</button></td>
+                <td>
+                    <button class="btn btn-sm btn-primary" onclick="app.activateModel(${m.id})">Activate</button>
+                    <button class="btn btn-sm" onclick="app.editModel(${m.id}, '${m.name}')">Edit</button>
+                    <button class="btn btn-sm btn-danger" onclick="app.deleteModel(${m.id})">Delete</button>
+                </td>
             `;
             tableBody.appendChild(tr);
         });
@@ -566,7 +570,32 @@ class App {
                 this.showToast('Model activated.', 'success');
                 this.loadModels().then(() => this.initModels());
             })
-            .catch(err => this.log(`Activate model failed: ${err.message}`, 'error'));
+            .catch(err => this.log(`Failed to activate model: ${err.message}`, 'error'));
+    }
+
+    async editModel(id, currentName) {
+        const newName = prompt("Enter new model name:", currentName);
+        if (!newName || newName.trim() === "" || newName === currentName) return;
+        try {
+            await this.api('PUT', `models/${id}`, { name: newName.trim() });
+            this.showToast('Model renamed successfully', 'success');
+            await this.loadModels();
+            if (this.currentSection === 'models') this.initModels();
+        } catch (err) {
+            // Toast is shown inside api()
+        }
+    }
+
+    async deleteModel(id) {
+        if (!confirm("Are you sure you want to delete this model? This action cannot be undone.")) return;
+        try {
+            await this.api('DELETE', `models/${id}`);
+            this.showToast('Model deleted', 'success');
+            await this.loadModels();
+            if (this.currentSection === 'models') this.initModels();
+        } catch (err) {
+            // Toast is shown inside api()
+        }
     }
 
     // =========================================================

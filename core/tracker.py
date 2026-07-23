@@ -199,9 +199,12 @@ class ConveyorTracker:
                     self.finalized_tracks.append(self.tracks.pop(tid))
 
         # Register new detections
+        decision_x = self._decision_line_x_px(frame_width)
         for j in range(len(det_centroids)):
             if j not in used_cols:
-                self._register(det_bboxes[j], det_centroids[j])
+                # Chặn nhận diện vật thể xuất hiện lần đầu ở Khu vực 2
+                if det_centroids[j][0] < decision_x:
+                    self._register(det_bboxes[j], det_centroids[j])
 
     # ------------------------------------------------------------------
     # Helpers

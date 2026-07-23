@@ -164,6 +164,12 @@ async def upload_references(
 
     # Create a new model and session
     name = model_name or f"Model_Anomaly_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+    
+    # Check for duplicate name
+    existing = db.query(Model).filter(Model.name == name).first()
+    if existing:
+        raise HTTPException(status_code=400, detail=f"Model name '{name}' already exists.")
+        
     model_dir = os.path.join(BASE_DIR, "data", "models", name)
     os.makedirs(model_dir, exist_ok=True)
     
