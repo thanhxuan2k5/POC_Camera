@@ -156,7 +156,7 @@ class InspectionPipeline:
                 
                 # 1. Area 1: Collect votes continuously
                 for track in self.tracker.get_tracks_needing_classification():
-                    cropped = self.detector.crop_detection(frame, track.bbox, padding=0.05)
+                    cropped = self.detector.crop_detection(frame, track.bbox, padding=0.15)
                     if cropped.size > 0:
                         emb = self.embedder.extract(cropped)
                         if emb is not None:
@@ -180,7 +180,7 @@ class InspectionPipeline:
                         final_res = best_vote['result']
                     else:
                         # Fallback if no votes collected (e.g. moved too fast)
-                        cropped = self.detector.crop_detection(frame, track.bbox, padding=0.05)
+                        cropped = self.detector.crop_detection(frame, track.bbox, padding=0.15)
                         final_res = 'NG'
                         if cropped.size > 0:
                             emb = self.embedder.extract(cropped)
