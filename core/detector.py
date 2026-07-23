@@ -9,13 +9,16 @@ class TokenDetector:
     def __init__(self, model_path='yolo11n_poc_classification_2107.pt', conf_threshold=0.5, device='cpu'):
         self.model_path = model_path
         self.conf_threshold = conf_threshold
+        # Chuẩn hóa device string: '0' → 'cuda:0', 'cpu' → 'cpu'
+        if isinstance(device, str) and device.isdigit():
+            device = f'cuda:{device}'
         self.device = device
         self.fixed_conveyor_bbox = None  # Cache conveyor ROI once detected (Jetson Nano optimization)
         
-        logger.info(f"Loading YOLO model from {model_path} on {device} with conf_threshold={self.conf_threshold}")
+        logger.info(f"Loading YOLO model from {model_path} on {self.device} with conf_threshold={self.conf_threshold}")
         try:
             self.model = YOLO(model_path)
-            self.model.to(device)
+            self.model.to(self.device)
             logger.info("YOLO model loaded successfully.")
         except Exception as e:
             logger.error(f"Failed to load YOLO model: {e}")
