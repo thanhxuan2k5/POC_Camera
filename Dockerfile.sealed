@@ -1,0 +1,86 @@
+# ============================================================
+# Stage 1: Builder (Biên dịch mã nguồn bằng Nuitka)
+# ============================================================
+FROM dustynv/l4t-pytorch:r36.4.0 AS builder
+
+ENV DEBIAN_FRONTEND=noninteractive
+ENV TZ=Asia/Ho_Chi_Minh
+ENV PIP_INDEX_URL=https://pypi.org/simple
+ENV PIP_TRUSTED_HOST=pypi.org
+
+WORKDIR /build
+
+# Cài đặt các công cụ cần thiết cho Nuitka
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc \
+    g++ \
+    patchelf \
+    ccache \
+    python3-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Cài đặt Nuitka
+RUN pip3 install --no-cache-dir nuitka
+
+# Copy requirements và cài đặt (để Nuitka phân tích dependencies nếu cần)
+COPY requirements.txt .
+RUN pip3 install --no-cache-dir "numpy<2.0"
+RUN pip3 install --no-cache-dir -r requirements.txt && \
+    pip3 install --no-cache-dir --force-reinstall "numpy<2.0"
+
+# Copy source code
+COPY core/ /build/core/
+COPY web/ /build/web/
+COPY run.py /build/run.py
+
+# Dùng Nuitka biên dịch tất cả các file .py (ngoại trừ __init__.py) thành .so
+# Sử dụng vòng lặp để giữ nguyên cấu trúc thư mục
+RUN find core web -name "*.py" -not -name "__init__.py" | while read file; do \
+        dir=$(dirname "$file"); \
+        base=$(basename "$file"); \
+        cd "$dir" && \
+        python3 -m nuitka --module "$base" --remove-output --no-pyi-file && \
+        cd -; \
+    done
+
+# Xoá toàn bộ file .py gốc (trừ __init__.py) để bảo mật mã nguồn
+RUN find core web -name "*.py" -not -name "__init__.py" -delete
+
+# ============================================================
+# Stage 2: Production Sealed (Image cuối cùng, không chứa code Python lõi)
+# ============================================================
+FROM dustynv/l4t-pytorch:r36.4.0
+
+ENV DEBIAN_FRONTEND=noninteractive
+ENV TZ=Asia/Ho_Chi_Minh
+ENV PYTHONUNBUFFERED=1
+ENV PIP_INDEX_URL=https://pypi.org/simple
+ENV PIP_TRUSTED_HOST=pypi.org
+
+WORKDIR /app
+
+# Cài lại thư viện Python cho runtime
+COPY requirements.txt .
+RUN pip3 install --no-cache-dir "numpy<2.0"
+RUN pip3 install --no-cache-dir \
+    "ultralytics" \
+    "fastapi" \
+    "uvicorn" \
+    "python-multipart" \
+    "aiofiles" \
+    "sqlalchemy" \
+    "pyyaml" \
+    "paho-mqtt" \
+    "websockets" && \
+    pip3 install --no-cache-dir --force-reinstall "numpy<2.0"
+
+# Copy các thư viện .so đã biên dịch và các file tĩnh từ Stage 1
+COPY --from=builder /build/core /app/core
+COPY --from=builder /build/web /app/web
+COPY --from=builder /build/run.py /app/run.py
+
+# Đảm bảo tạo sẵn thư mục data
+RUN mkdir -p /app/data
+
+# Điểm khởi chạy
+CMD ["python3", "run.py"]

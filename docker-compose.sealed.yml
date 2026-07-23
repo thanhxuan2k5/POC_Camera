@@ -1,0 +1,23 @@
+version: "3.8"
+
+services:
+  ai-inspection-sealed:
+    build:
+      context: .
+      dockerfile: Dockerfile.sealed
+      # Dùng host network khi BUILD để pip có thể tải gói từ Internet
+      network: host
+    container_name: poc-camera-sealed
+    # Bắt buộc để container truy cập GPU CUDA trên Jetson
+    runtime: nvidia
+    # Dùng host network khi RUN để kết nối RTSP camera và mở port dễ dàng
+    network_mode: host
+    volumes:
+      # Mount data ra ngoài để không mất dữ liệu khi xoá/rebuild container
+      - ./data:/app/data
+      # LƯU Ý: KHÔNG MOUNT SOURCE CODE (core, web) VÀO NỮA
+      # Container sẽ chạy bằng các file .so đã được đóng gói bên trong
+      - ./pipeline_config.yaml:/app/pipeline_config.yaml
+    environment:
+      - TZ=Asia/Ho_Chi_Minh
+    restart: unless-stopped
