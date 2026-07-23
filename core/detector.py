@@ -13,12 +13,16 @@ class TokenDetector:
         if isinstance(device, str) and device.isdigit():
             device = f'cuda:{device}'
         self.device = device
-        self.fixed_conveyor_bbox = None  # Cache conveyor ROI once detected (Jetson Nano optimization)
+        self.fixed_conveyor_bbox = None  # Cache conveyor ROI once detected
+        self.is_engine = model_path.endswith('.engine') or model_path.endswith('.onnx')
         
         logger.info(f"Loading YOLO model from {model_path} on {self.device} with conf_threshold={self.conf_threshold}")
         try:
-            self.model = YOLO(model_path)
-            self.model.to(self.device)
+            self.model = YOLO(model_path, task='detect')
+            # .engine / .onnx không hỗ trợ model.to() - device sẽ được truyền vào predict()
+            # Chỉ gọi model.to() với file .pt thông thường
+            if not self.is_engine:
+                self.model.to(self.device)
             logger.info("YOLO model loaded successfully.")
         except Exception as e:
             logger.error(f"Failed to load YOLO model: {e}")
