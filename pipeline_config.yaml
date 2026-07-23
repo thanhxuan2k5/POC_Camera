@@ -12,14 +12,16 @@ camera:
   reconnect_delay: 5
 
 detection:
-  model_path: "yolo11n_poc_classification_2107.pt"
+  # Dùng file .engine (TensorRT) trên Jetson để tối ưu tốc độ GPU
+  # Đổi lại thành .pt nếu chạy trên máy thường (CPU/Windows)
+  model_path: "yolo11n_poc_classification_2107.engine"
   confidence_threshold: 0.3
-  device: "cpu"  # 'cpu' or '0' for GPU
+  device: "0"  # GPU 0 trên Jetson. Đổi thành 'cpu' nếu chạy trên máy thường
   img_size: 640
 
 embedding:
   model_name: "mobilenet_v3_small"
-  device: "cpu"
+  device: "0"  # GPU 0 trên Jetson. Đổi thành 'cpu' nếu chạy trên máy thường
   input_size: 224
   normalize: true
 
