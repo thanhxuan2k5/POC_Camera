@@ -478,17 +478,23 @@ class App {
                 const txt = document.getElementById('global-pipeline-text');
                 const liveStatus = document.getElementById('live-status');
                 const liveFps = document.getElementById('live-fps');
+                const startBtn = document.getElementById('btn-start-pipeline');
+                const stopBtn = document.getElementById('btn-stop-pipeline');
 
                 if (stats.is_running) {
                     if (dot) dot.className = 'dot running';
                     if (txt) txt.textContent = `Running (Cam ${stats.camera_id})`;
                     if (liveStatus) { liveStatus.textContent = 'Running'; liveStatus.style.color = '#4caf50'; }
                     if (liveFps) liveFps.textContent = stats.fps || 0;
+                    if (startBtn) startBtn.style.display = 'none';
+                    if (stopBtn) stopBtn.style.display = 'inline-block';
                 } else {
                     if (dot) dot.className = 'dot stopped';
                     if (txt) txt.textContent = 'System Idle';
                     if (liveStatus) { liveStatus.textContent = 'Stopped'; liveStatus.style.color = '#f44336'; }
                     if (liveFps) liveFps.textContent = '0';
+                    if (startBtn) startBtn.style.display = 'inline-block';
+                    if (stopBtn) stopBtn.style.display = 'none';
                 }
             } catch (e) {
                 // Silently ignore polling errors to avoid spamming debug log
