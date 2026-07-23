@@ -34,14 +34,15 @@ COPY web/ /build/web/
 COPY run.py /build/run.py
 
 # Dùng Nuitka biên dịch tất cả các file .py (ngoại trừ __init__.py) thành .so
-# Sử dụng vòng lặp để giữ nguyên cấu trúc thư mục
-RUN find core web -name "*.py" -not -name "__init__.py" | while read file; do \
-        dir=$(dirname "$file"); \
-        base=$(basename "$file"); \
-        cd "$dir" && \
-        python3 -m nuitka --module "$base" --remove-output --no-pyi-file && \
+# Sử dụng vòng lặp để giữ nguyên cấu trúc thư mục, nếu lỗi sẽ dừng build ngay!
+RUN /bin/bash -c "set -e -o pipefail; find core web -name '*.py' -not -name '__init__.py' | while read file; do \
+        dir=\$(dirname \"\$file\"); \
+        base=\$(basename \"\$file\"); \
+        echo \"Compiling \$file...\"; \
+        cd \"\$dir\" && \
+        python3 -m nuitka --module \"\$base\" --remove-output --no-pyi-file || exit 1; \
         cd -; \
-    done
+    done"
 
 # Xoá toàn bộ file .py gốc (trừ __init__.py) để bảo mật mã nguồn
 RUN find core web -name "*.py" -not -name "__init__.py" -delete
