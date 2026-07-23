@@ -93,21 +93,18 @@ def start_inference(camera_id: int, settings: LiveStartSettings, request: Reques
     main_loop = request.app.state.main_event_loop
     from web.routes.ws import manager as ws_manager
 
-    def on_result(track_id, result, similarity, frame, bbox):
+    def on_result(track_id, result, similarity, frame, bbox, b64_img):
         threading.Thread(target=_save_event, args=(track_id, result, similarity, frame, bbox, cam.id), daemon=True).start()
-        event_data = {"type": "event", "data": {"result": result, "similarity": round(similarity, 4)}}
         
-        if result == "NG":
-            try:
-                x1, y1, x2, y2 = bbox
-                h, w = frame.shape[:2]
-                pad = 20
-                x1, y1, x2, y2 = max(0, x1 - pad), max(0, y1 - pad), min(w, x2 + pad), min(h, y2 + pad)
-                cropped = frame[y1:y2, x1:x2].copy()
-                _, buf = cv2.imencode(".jpg", cropped, [cv2.IMWRITE_JPEG_QUALITY, 80])
-                event_data["data"]["image"] = base64.b64encode(buf).decode("utf-8")
-            except Exception as e:
-                logger.error(f"Failed to encode NG image for websocket: {e}")
+        event_data = {
+            "type": "event", 
+            "data": {
+                "track_id": track_id,
+                "result": result, 
+                "similarity": round(similarity, 4),
+                "image": b64_img
+            }
+        }
                 
         ws_manager.broadcast_to_room_from_thread(main_loop, event_data, str(cam.id))
 

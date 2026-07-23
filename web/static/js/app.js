@@ -654,26 +654,46 @@ class App {
                     };
                     img.src = 'data:image/jpeg;base64,' + message.data;
                 } else if (message.type === 'event' && message.data) {
-                    if (message.data.result === 'NG' && message.data.image) {
-                        const ngLog = document.getElementById('ng-log-container');
-                        const emptyMsg = document.getElementById('ng-empty-msg');
+                    if (message.data.image) {
+                        const logContainer = document.getElementById('classification-log-container');
+                        const emptyMsg = document.getElementById('classification-empty-msg');
                         if (emptyMsg) emptyMsg.style.display = 'none';
                         
-                        if (ngLog) {
+                        if (logContainer) {
+                            // Create a small card for the classification
+                            const card = document.createElement('div');
+                            card.style.display = 'flex';
+                            card.style.flexDirection = 'column';
+                            card.style.alignItems = 'center';
+                            card.style.background = 'rgba(255, 255, 255, 0.05)';
+                            card.style.padding = '8px';
+                            card.style.borderRadius = '8px';
+                            card.style.minWidth = '80px';
+                            
                             const imgEl = document.createElement('img');
                             imgEl.src = 'data:image/jpeg;base64,' + message.data.image;
-                            imgEl.style.width = '100px';
-                            imgEl.style.height = '100px';
+                            imgEl.style.width = '80px';
+                            imgEl.style.height = '80px';
                             imgEl.style.objectFit = 'contain';
-                            imgEl.style.border = '2px solid #ef4444';
+                            imgEl.style.border = message.data.result === 'OK' ? '2px solid #10b981' : '2px solid #ef4444';
                             imgEl.style.borderRadius = '8px';
-                            imgEl.title = `Sim: ${message.data.similarity?.toFixed(2)} - ${new Date().toLocaleTimeString()}`;
                             
-                            ngLog.prepend(imgEl);
+                            const label = document.createElement('span');
+                            label.style.marginTop = '4px';
+                            label.style.fontSize = '12px';
+                            label.style.fontWeight = 'bold';
+                            label.style.color = message.data.result === 'OK' ? '#10b981' : '#ef4444';
+                            label.textContent = `ID:${message.data.track_id} ${message.data.result}`;
+                            
+                            card.title = `Sim: ${message.data.similarity?.toFixed(2)} - ${new Date().toLocaleTimeString()}`;
+                            card.appendChild(imgEl);
+                            card.appendChild(label);
+                            
+                            logContainer.prepend(card);
                             
                             // Keep max 20 images
-                            while (ngLog.children.length > 20) {
-                                ngLog.removeChild(ngLog.lastChild);
+                            while (logContainer.children.length > 20) {
+                                logContainer.removeChild(logContainer.lastChild);
                             }
                         }
                     }

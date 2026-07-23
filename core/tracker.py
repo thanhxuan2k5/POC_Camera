@@ -80,12 +80,14 @@ class ConveyorTracker:
             return False  # Strictly require conveyor to be detected
         return cv2.pointPolygonTest(poly, (float(cx), float(cy)), measureDist=False) >= 0
 
-    def _decision_line_y_px(self, frame_height):
-        """Absolute pixel Y of the decision line."""
+    def _decision_line_x_px(self, frame_width):
+        """Absolute pixel X of the decision line (1/3 of conveyor length)."""
         if self.conveyor_bbox is not None:
-            _, cy1, _, cy2 = self.conveyor_bbox
-            return cy1 + (cy2 - cy1) * self.decision_line_y
-        return frame_height * self.decision_line_y
+            cx1, _, cx2, _ = self.conveyor_bbox
+            # QC line at 1/3 of the conveyor length
+            return cx1 + (cx2 - cx1) * 0.33
+        # Fallback if no conveyor detected
+        return frame_width * 0.33
 
     # ------------------------------------------------------------------
     # EMA update for conveyor bbox
@@ -107,10 +109,11 @@ class ConveyorTracker:
     # Main update
     # ------------------------------------------------------------------
 
-    def update(self, tokens, frame_height, conveyor_bbox=None):
+    def update(self, tokens, frame_width, frame_height, conveyor_bbox=None):
         """
         tokens         : list[dict] with keys 'bbox', 'confidence', 'class_id', 'class_name'
                          (class 0 = obj, already pre-filtered by detector)
+        frame_width    : full-frame width (px)
         frame_height   : full-frame height (px)
         conveyor_bbox  : (x1,y1,x2,y2) from YOLO class-1 detection, or None
         """
@@ -170,8 +173,10 @@ class ConveyorTracker:
             track.disappeared_frames = 0
             track.hits += 1
 
-            # If for any reason it wasn't classified yet, classify it when it reaches enough hits
-            if not track.classification_done and track.hits >= 3:
+            # Check if token crossed the decision line on X-axis (assuming moving left to right)
+            # We trigger when current centroid X > decision line X
+            decision_x = self._decision_line_x_px(frame_width)
+            if not track.classification_done and track.current_centroid[0] > decision_x:
                 track.needs_classification = True
 
             used_rows.add(row)
@@ -205,5 +210,6 @@ class ConveyorTracker:
     def get_finalized_tracks(self):
         return self.finalized_tracks
 
-    def get_decision_line_y_px(self, frame_height):
-        return self._decision_line_y_px(frame_height)
+    def get_decision_line_x_px(self, frame_width):
+        return self._decision_line_x_px(frame_width)
+

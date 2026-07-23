@@ -27,27 +27,14 @@ class TokenDetector:
         except Exception as e:
             logger.error(f"Failed to load YOLO model: {e}")
             raise
-            
-    def set_fixed_conveyor(self, bbox):
-        """Manually lock or update fixed conveyor bbox ROI."""
-        self.fixed_conveyor_bbox = bbox
-        logger.info(f"Fixed conveyor ROI set to {bbox}")
-
-    def reset_fixed_conveyor(self):
-        """Reset fixed conveyor ROI so it can be re-detected."""
-        self.fixed_conveyor_bbox = None
 
     def detect(self, frame):
         """
         Detects 'obj' and 'bangchuyen'.
-        - Locks conveyor ROI on first detection for Jetson Nano speed optimization.
         - Filters 'obj' tokens within the conveyor polygon.
         """
-        if self.fixed_conveyor_bbox:
-            # Optimize for Jetson: only detect class 0 (obj) since conveyor is known
-            results = self.model.predict(frame, conf=self.conf_threshold, iou=0.45, classes=[0], verbose=False, device=self.device)
-        else:
-            results = self.model.predict(frame, conf=self.conf_threshold, iou=0.45, verbose=False, device=self.device)
+        # Always detect both classes (0: obj, 1: bangchuyen) to adapt to camera movement
+        results = self.model.predict(frame, conf=self.conf_threshold, iou=0.45, verbose=False, device=self.device)
         
         all_objs = []
         detected_conveyor_bbox = None

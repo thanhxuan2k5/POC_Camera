@@ -50,11 +50,11 @@
                             <canvas id="live-canvas" width="1280" height="720"></canvas>
                             <div class="no-signal-msg" id="no-signal-msg"><span class="icon">📡</span><p>No Signal or Pipeline Stopped</p></div>
                         </div>
-                        <!-- NG Log Panel -->
+                        <!-- Classification Log Panel -->
                         <div class="ng-log-panel glass-panel mt-4" style="padding: 1rem; max-height: 250px; overflow-y: auto;">
-                            <h3 style="margin-bottom: 0.5rem;"><span class="text-danger">⚠</span> Recent NG Events</h3>
-                            <div class="ng-log-container" id="ng-log-container" style="display: flex; gap: 1rem; flex-wrap: wrap;">
-                                <p class="text-secondary" id="ng-empty-msg">No errors detected.</p>
+                            <h3 style="margin-bottom: 0.5rem;"><span class="text-primary">📋</span> Recent Classifications</h3>
+                            <div class="ng-log-container" id="classification-log-container" style="display: flex; gap: 1rem; flex-wrap: wrap;">
+                                <p class="text-secondary" id="classification-empty-msg">Waiting for objects...</p>
                             </div>
                         </div>
                     </div>

@@ -91,6 +91,12 @@ class InspectionPipeline:
             return stats
             
     def _draw_overlay(self, frame, tracks):
+        # Draw vertical QC line
+        h, w = frame.shape[:2]
+        decision_x = int(self.tracker.get_decision_line_x_px(w))
+        cv2.line(frame, (decision_x, 0), (decision_x, h), (0, 0, 255), 2)
+        cv2.putText(frame, "QC Line", (decision_x + 5, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1)
+
         for track in tracks:
             # Only draw tracks that are stable (hits >= 3) to avoid ghost boxes
             if track.hits < 3 and not track.classification_done:
@@ -107,7 +113,7 @@ class InspectionPipeline:
 
         with self._stats_lock:
             fps, ok, ng = self.stats["fps"], self.stats["total_ok"], self.stats["total_ng"]
-        cv2.putText(frame, f"FPS: {fps:.1f} | OK: {int(ok)} | NG: {int(ng)}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
+        cv2.putText(frame, f"FPS: {fps:.1f} | OK: {int(ok)} | NG: {int(ng)}", (10, h - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
         
         return frame
         
@@ -133,7 +139,7 @@ class InspectionPipeline:
             
             try:
                 tokens, conveyor_bbox = self.detector.detect(frame)
-                self.tracker.update(tokens, frame_height=h, conveyor_bbox=conveyor_bbox)
+                self.tracker.update(tokens, frame_width=w, frame_height=h, conveyor_bbox=conveyor_bbox)
                 
                 for track in self.tracker.get_tracks_needing_classification():
                     # *** FIX: Call crop_detection with the correct argument (bbox tuple) ***
@@ -149,11 +155,19 @@ class InspectionPipeline:
                             
                             with self._stats_lock:
                                 self.stats['total_inspected'] += 1
-                                if cls_res['result'] == 'OK': self.stats['total_ok'] += 1
-                                else: self.stats['total_ng'] += 1
+                                if cls_res['result'] == 'OK':
+                                    self.stats['total_ok'] += 1
+                                else:
+                                    self.stats['total_ng'] += 1
+                            
+                            if self.callbacks['on_result']:
+                                # Chuyển ảnh cắt thành base64 để truyền lên UI
+                                _, buf = cv2.imencode('.jpg', cropped, [cv2.IMWRITE_JPEG_QUALITY, 80])
+                                import base64
+                                b64_img = base64.b64encode(buf).decode('utf-8')
                                 
-                            for cb in self.callbacks['on_result']:
-                                cb(track.track_id, cls_res['result'], cls_res['similarity'], frame, track.bbox)
+                                for cb in self.callbacks['on_result']:
+                                    cb(track.track_id, cls_res['result'], cls_res['similarity'], frame, track.bbox, b64_img)
             except Exception as e:
                 logger.error(f"Error during detection/classification loop: {e}", exc_info=True)
                 continue # Continue to next frame
