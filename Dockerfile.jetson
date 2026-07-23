@@ -1,0 +1,46 @@
+# ============================================================
+# Dockerfile dành cho NVIDIA Jetson (JetPack 5/6 - L4T r36)
+# Base image: dustynv/l4t-pytorch đã có sẵn PyTorch + CUDA
+# ============================================================
+FROM dustynv/l4t-pytorch:r36.4.0
+
+ENV DEBIAN_FRONTEND=noninteractive
+ENV TZ=Asia/Ho_Chi_Minh
+ENV PYTHONUNBUFFERED=1
+
+# Buộc pip dùng PyPI chính thống (bỏ qua index server riêng của NVIDIA hay bị timeout)
+ENV PIP_INDEX_URL=https://pypi.org/simple
+ENV PIP_TRUSTED_HOST=pypi.org
+
+WORKDIR /app
+
+# Cài các thư viện: ultralytics (YOLO) + web backend
+# torch, torchvision, opencv đã có sẵn trong base image
+COPY requirements.txt .
+# Bước 1: Ghim numpy về phiên bản tương thích với PyTorch trong base image JetPack
+# (ultralytics hay kéo numpy 2.x vào nhưng PyTorch trên Jetson cần numpy 1.x)
+RUN pip3 install --no-cache-dir \
+    --index-url https://pypi.org/simple \
+    "numpy<2.0"
+
+# Bước 2: Cài ultralytics và các thư viện web (không cho ghi đè numpy đã ghim)
+RUN pip3 install --no-cache-dir \
+    --index-url https://pypi.org/simple \
+    "ultralytics" \
+    "fastapi" \
+    "uvicorn" \
+    "python-multipart" \
+    "aiofiles" \
+    "sqlalchemy" \
+    "pyyaml" \
+    "paho-mqtt" \
+    "websockets" && \
+    pip3 install --no-cache-dir --index-url https://pypi.org/simple --force-reinstall "numpy<2.0"
+
+# Copy toàn bộ source code vào container
+COPY . .
+
+# Port 8080: HTTP API | Port 8081: WebSocket live stream
+EXPOSE 8080 8081
+
+CMD ["python3", "run.py"]
