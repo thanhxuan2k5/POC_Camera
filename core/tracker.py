@@ -18,10 +18,12 @@ logger = logging.getLogger(__name__)
 
 
 class Track:
+    __slots__ = (
         "track_id", "bbox", "centroid_history",
         "classification_result", "classification_done",
         "needs_classification", "disappeared_frames", "hits",
         "needs_final_decision", "votes", "last_crop"
+    )
 
     def __init__(self, track_id, bbox, centroid):
         self.track_id = track_id
