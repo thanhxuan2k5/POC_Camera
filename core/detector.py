@@ -65,12 +65,18 @@ class TokenDetector:
                         highest_conv_conf = conf
                         detected_conveyor_bbox = (int(x1), int(y1), int(x2), int(y2))
         
-        # If we detect conveyor and don't have fixed_conveyor_bbox yet, lock it
-        if detected_conveyor_bbox is not None and self.fixed_conveyor_bbox is None:
-            self.fixed_conveyor_bbox = detected_conveyor_bbox
-            logger.info(f"Conveyor ROI locked on frame detection: {self.fixed_conveyor_bbox}")
+        # Update conveyor bbox with exponential moving average for smooth adaptation
+        if detected_conveyor_bbox is not None:
+            if self.fixed_conveyor_bbox is None:
+                self.fixed_conveyor_bbox = list(detected_conveyor_bbox)
+            else:
+                alpha = 0.1 # Smoothing factor
+                self.fixed_conveyor_bbox = [
+                    int(alpha * n + (1 - alpha) * o) 
+                    for n, o in zip(detected_conveyor_bbox, self.fixed_conveyor_bbox)
+                ]
 
-        effective_conveyor = detected_conveyor_bbox or self.fixed_conveyor_bbox
+        effective_conveyor = tuple(self.fixed_conveyor_bbox) if self.fixed_conveyor_bbox else None
 
         # Sort all found objects by confidence, descending
         all_objs.sort(key=lambda x: x['confidence'], reverse=True)

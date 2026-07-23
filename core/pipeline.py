@@ -90,12 +90,25 @@ class InspectionPipeline:
                 stats['uptime'] = time.time() - stats['start_time']
             return stats
             
-    def _draw_overlay(self, frame, tracks):
+    def _draw_overlay(self, frame, tracks, conveyor_bbox=None):
         # Draw vertical QC line
         h, w = frame.shape[:2]
         decision_x = int(self.tracker.get_decision_line_x_px(w))
-        cv2.line(frame, (decision_x, 0), (decision_x, h), (0, 0, 255), 2)
-        cv2.putText(frame, "QC Line", (decision_x + 5, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1)
+        
+        y_start = 0
+        y_end = h
+        
+        if conveyor_bbox:
+            cx1, cy1, cx2, cy2 = conveyor_bbox
+            # Vẽ viền cho băng chuyền (màu cam)
+            cv2.rectangle(frame, (cx1, cy1), (cx2, cy2), (0, 165, 255), 2)
+            cv2.putText(frame, "Conveyor", (cx1, max(cy1 - 5, 10)), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 165, 255), 1)
+            # Chỉ kẻ vạch QC trong phạm vi chiều cao của băng chuyền
+            y_start = cy1
+            y_end = cy2
+
+        cv2.line(frame, (decision_x, y_start), (decision_x, y_end), (0, 0, 255), 2)
+        cv2.putText(frame, "QC Line", (decision_x + 5, y_start + 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1)
 
         for track in tracks:
             # Only draw tracks that are stable (hits >= 3) to avoid ghost boxes
@@ -182,7 +195,7 @@ class InspectionPipeline:
                 
             # Frame Callback
             if self.callbacks['on_frame']:
-                annotated_frame = self._draw_overlay(frame.copy(), list(self.tracker.tracks.values()))
+                annotated_frame = self._draw_overlay(frame.copy(), list(self.tracker.tracks.values()), conveyor_bbox)
                 for cb in self.callbacks['on_frame']:
                     cb(annotated_frame)
         
