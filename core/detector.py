@@ -9,10 +9,12 @@ class TokenDetector:
     def __init__(self, model_path='yolo11n_poc_classification_2107.pt', conf_threshold=0.5, device='cpu'):
         self.model_path = model_path
         self.conf_threshold = conf_threshold
-        # Chuẩn hóa device string: '0' → 'cuda:0', 'cpu' → 'cpu'
+        # Chuẩn hóa device string: '0' hoặc 0 → 'cuda:0', 'cpu' → 'cpu'
         if isinstance(device, str) and device.isdigit():
             device = f'cuda:{device}'
-        self.device = device
+        elif isinstance(device, int):
+            device = f'cuda:{device}'
+        self.device = str(device)
         self.fixed_conveyor_bbox = None  # Cache conveyor ROI once detected
         self.is_engine = model_path.endswith('.engine') or model_path.endswith('.onnx')
         

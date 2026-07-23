@@ -10,8 +10,13 @@ logger = logging.getLogger(__name__)
 
 class TokenEmbedder:
     def __init__(self, model_path=None, device='cpu'):
-        self.device = device
-        logger.info(f"Loading MobileNetV3-Small embedder on {device}")
+        # Chuẩn hóa device string: '0' hoặc 0 → 'cuda:0', 'cpu' → 'cpu'
+        if isinstance(device, str) and device.isdigit():
+            device = f'cuda:{device}'
+        elif isinstance(device, int):
+            device = f'cuda:{device}'
+        self.device = str(device)
+        logger.info(f"Loading MobileNetV3-Small embedder on {self.device}")
         
         try:
             # Use MobileNetV3 Small as feature extractor
