@@ -154,16 +154,18 @@ class InspectionPipeline:
                 tokens, conveyor_bbox = self.detector.detect(frame)
                 self.tracker.update(tokens, frame_width=w, frame_height=h, conveyor_bbox=conveyor_bbox)
                 
-                # 1. Area 1: Collect votes continuously
+                # 1. Area 1: Collect votes continuously (Limit to 3 to prevent lag)
                 for track in self.tracker.get_tracks_needing_classification():
+                    if len(track.votes) >= 3:
+                        track.needs_classification = False
+                        continue
+                        
                     cropped = self.detector.crop_detection(frame, track.bbox, padding=0.02)
                     if cropped.size > 0:
                         emb = self.embedder.extract(cropped)
                         if emb is not None:
                             cls_res = self.classifier.classify(emb)
                             track.votes.append(cls_res)
-                            # Không giới hạn Queue size nữa, lưu toàn bộ lịch sử di chuyển
-                            # để lấy góc nhìn đẹp nhất của phôi trên băng chuyền.
                             # Update last crop for UI
                             track.last_crop = cropped
                             
