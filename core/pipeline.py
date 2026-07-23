@@ -156,15 +156,14 @@ class InspectionPipeline:
                 
                 # 1. Area 1: Collect votes continuously
                 for track in self.tracker.get_tracks_needing_classification():
-                    cropped = self.detector.crop_detection(frame, track.bbox, padding=0.15)
+                    cropped = self.detector.crop_detection(frame, track.bbox, padding=0.02)
                     if cropped.size > 0:
                         emb = self.embedder.extract(cropped)
                         if emb is not None:
                             cls_res = self.classifier.classify(emb)
                             track.votes.append(cls_res)
-                            # Keep queue size limited
-                            if len(track.votes) > self.tracker.max_votes:
-                                track.votes.pop(0)
+                            # Không giới hạn Queue size nữa, lưu toàn bộ lịch sử di chuyển
+                            # để lấy góc nhìn đẹp nhất của phôi trên băng chuyền.
                             # Update last crop for UI
                             track.last_crop = cropped
                             
@@ -180,7 +179,7 @@ class InspectionPipeline:
                         final_res = best_vote['result']
                     else:
                         # Fallback if no votes collected (e.g. moved too fast)
-                        cropped = self.detector.crop_detection(frame, track.bbox, padding=0.15)
+                        cropped = self.detector.crop_detection(frame, track.bbox, padding=0.02)
                         final_res = 'NG'
                         if cropped.size > 0:
                             emb = self.embedder.extract(cropped)

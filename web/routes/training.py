@@ -97,7 +97,7 @@ def _run_training_anomaly(session_id: int, ref_dir: str, threshold: float = 0.85
                 center = (w // 2, h // 2)
                 for angle in range(0, 360, 15):
                     M = cv2.getRotationMatrix2D(center, angle, 1.0)
-                    rotated = cv2.warpAffine(img, M, (w, h), flags=cv2.INTER_LINEAR, borderMode=cv2.BORDER_REPLICATE)
+                    rotated = cv2.warpAffine(img, M, (w, h), flags=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT, borderValue=(0,0,0))
                     emb = embedder.extract(rotated)
                     if emb is not None:
                         embeddings.append(emb)

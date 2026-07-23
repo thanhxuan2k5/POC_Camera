@@ -41,13 +41,23 @@ class TokenEmbedder:
             logger.error(f"Failed to load embedder: {e}")
             raise
 
+    def apply_circular_mask(self, img_rgb):
+        h, w = img_rgb.shape[:2]
+        center = (w // 2, h // 2)
+        radius = min(w, h) // 2
+        mask = np.zeros((h, w), dtype=np.uint8)
+        cv2.circle(mask, center, radius, 255, -1)
+        return cv2.bitwise_and(img_rgb, img_rgb, mask=mask)
+
     def extract(self, image):
         """Extract feature embedding for a single BGR image."""
         if image is None or image.size == 0:
             return None
             
-        # Convert BGR to RGB
+        # Convert BGR to RGB and apply circular mask
         img_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        img_rgb = self.apply_circular_mask(img_rgb)
+        
         tensor = self.transform(img_rgb).unsqueeze(0).to(self.device)
         
         with torch.no_grad():
@@ -68,6 +78,7 @@ class TokenEmbedder:
         tensors = []
         for img in images:
             img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+            img_rgb = self.apply_circular_mask(img_rgb)
             tensors.append(self.transform(img_rgb))
             
         batch_tensor = torch.stack(tensors).to(self.device)
