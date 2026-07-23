@@ -154,33 +154,67 @@ class InspectionPipeline:
                 tokens, conveyor_bbox = self.detector.detect(frame)
                 self.tracker.update(tokens, frame_width=w, frame_height=h, conveyor_bbox=conveyor_bbox)
                 
+                # 1. Area 1: Collect votes continuously
                 for track in self.tracker.get_tracks_needing_classification():
-                    # *** FIX: Call crop_detection with the correct argument (bbox tuple) ***
                     cropped = self.detector.crop_detection(frame, track.bbox, padding=0.15)
-                    
                     if cropped.size > 0:
                         emb = self.embedder.extract(cropped)
                         if emb is not None:
                             cls_res = self.classifier.classify(emb)
-                            track.classification_result = cls_res['result']
-                            track.classification_done = True
-                            track.needs_classification = False
+                            track.votes.append(cls_res)
+                            # Keep queue size limited
+                            if len(track.votes) > self.tracker.max_votes:
+                                track.votes.pop(0)
+                            # Update last crop for UI
+                            track.last_crop = cropped
                             
-                            with self._stats_lock:
-                                self.stats['total_inspected'] += 1
-                                if cls_res['result'] == 'OK':
-                                    self.stats['total_ok'] += 1
-                                else:
-                                    self.stats['total_ng'] += 1
+                    track.needs_classification = False
+                    
+                # 2. Area 2: Make final decision and broadcast
+                for track in self.tracker.get_tracks_needing_final_decision():
+                    if len(track.votes) > 0:
+                        # Majority vote
+                        ok_count = sum(1 for v in track.votes if v['result'] == 'OK')
+                        ng_count = sum(1 for v in track.votes if v['result'] == 'NG')
+                        final_res = 'OK' if ok_count >= ng_count else 'NG'
+                    else:
+                        # Fallback if no votes collected (e.g. moved too fast)
+                        cropped = self.detector.crop_detection(frame, track.bbox, padding=0.15)
+                        final_res = 'NG'
+                        if cropped.size > 0:
+                            emb = self.embedder.extract(cropped)
+                            if emb is not None:
+                                cls_res = self.classifier.classify(emb)
+                                final_res = cls_res['result']
+                            track.last_crop = cropped
                             
-                            if self.callbacks['on_result']:
-                                # Chuyển ảnh cắt thành base64 để truyền lên UI
-                                _, buf = cv2.imencode('.jpg', cropped, [cv2.IMWRITE_JPEG_QUALITY, 80])
-                                import base64
-                                b64_img = base64.b64encode(buf).decode('utf-8')
-                                
-                                for cb in self.callbacks['on_result']:
-                                    cb(track.track_id, cls_res['result'], cls_res['similarity'], frame, track.bbox, b64_img)
+                    track.classification_result = final_res
+                    track.classification_done = True
+                    track.needs_final_decision = False
+                    
+                    with self._stats_lock:
+                        self.stats['total_inspected'] += 1
+                        if final_res == 'OK':
+                            self.stats['total_ok'] += 1
+                        else:
+                            self.stats['total_ng'] += 1
+                    
+                    if self.callbacks['on_result']:
+                        # Prepare image to send to UI
+                        img_to_send = track.last_crop if track.last_crop is not None else np.zeros((10,10,3), dtype=np.uint8)
+                        _, buf = cv2.imencode('.jpg', img_to_send, [cv2.IMWRITE_JPEG_QUALITY, 80])
+                        import base64
+                        b64_img = base64.b64encode(buf).decode('utf-8')
+                        
+                        # Calculate avg similarity for UI
+                        if track.votes:
+                            avg_sim = np.mean([v['similarity'] for v in track.votes if v['result'] == final_res]) if any(v['result'] == final_res for v in track.votes) else 0.0
+                        else:
+                            avg_sim = cls_res['similarity'] if 'cls_res' in locals() else 0.0
+                            
+                        for cb in self.callbacks['on_result']:
+                            cb(track.track_id, final_res, avg_sim, frame, track.bbox, b64_img)
+
             except Exception as e:
                 logger.error(f"Error during detection/classification loop: {e}", exc_info=True)
                 continue # Continue to next frame

@@ -18,11 +18,10 @@ logger = logging.getLogger(__name__)
 
 
 class Track:
-    __slots__ = (
         "track_id", "bbox", "centroid_history",
         "classification_result", "classification_done",
         "needs_classification", "disappeared_frames", "hits",
-    )
+        "needs_final_decision", "votes", "last_crop"
 
     def __init__(self, track_id, bbox, centroid):
         self.track_id = track_id
@@ -31,6 +30,9 @@ class Track:
         self.classification_result = None     # 'OK' | 'NG'
         self.classification_done = False
         self.needs_classification = False
+        self.needs_final_decision = False
+        self.votes = []
+        self.last_crop = None
         self.disappeared_frames = 0
         self.hits = 1
 
@@ -40,15 +42,17 @@ class Track:
 
 
 class ConveyorTracker:
-    def __init__(self, max_disappeared=10, max_distance=100.0, decision_line_y=0.75, ema_alpha=0.25):
+    def __init__(self, max_disappeared=10, max_distance=100.0, decision_line_y=0.8, ema_alpha=0.25, max_votes=15):
         """
-        decision_line_y : fraction of conveyor height at which a token is classified (0.0–1.0).
-        ema_alpha       : smoothing factor for conveyor bbox EMA (higher = faster tracking).
+        decision_line_y : fraction of conveyor width at which a token is finalized (0.0-1.0).
+        ema_alpha       : smoothing factor for conveyor bbox EMA.
+        max_votes       : max queue size for classification votes.
         """
         self.max_disappeared = max_disappeared
         self.max_distance = max_distance
         self.decision_line_y = decision_line_y
         self.ema_alpha = ema_alpha
+        self.max_votes = max_votes
 
         self.next_track_id = 0
         self.tracks: dict[int, Track] = {}
@@ -81,13 +85,12 @@ class ConveyorTracker:
         return cv2.pointPolygonTest(poly, (float(cx), float(cy)), measureDist=False) >= 0
 
     def _decision_line_x_px(self, frame_width):
-        """Absolute pixel X of the decision line (1/3 of conveyor length)."""
+        """Absolute pixel X of the decision line."""
         if self.conveyor_bbox is not None:
             cx1, _, cx2, _ = self.conveyor_bbox
-            # QC line at 1/3 of the conveyor length
-            return cx1 + (cx2 - cx1) * 0.33
+            return cx1 + (cx2 - cx1) * self.decision_line_y
         # Fallback if no conveyor detected
-        return frame_width * 0.33
+        return frame_width * self.decision_line_y
 
     # ------------------------------------------------------------------
     # EMA update for conveyor bbox
@@ -173,11 +176,15 @@ class ConveyorTracker:
             track.disappeared_frames = 0
             track.hits += 1
 
-            # Check if token crossed the decision line on X-axis (assuming moving left to right)
-            # We trigger when current centroid X > decision line X
+            # Continuous voting in Area 1, finalize when crossing to Area 2
             decision_x = self._decision_line_x_px(frame_width)
-            if not track.classification_done and track.current_centroid[0] > decision_x:
-                track.needs_classification = True
+            if not track.classification_done:
+                if track.current_centroid[0] < decision_x:
+                    track.needs_classification = True
+                else:
+                    track.needs_classification = False
+                    if not track.needs_final_decision:
+                        track.needs_final_decision = True
 
             used_rows.add(row)
             used_cols.add(col)
@@ -206,6 +213,9 @@ class ConveyorTracker:
 
     def get_tracks_needing_classification(self):
         return [t for t in self.tracks.values() if t.needs_classification]
+        
+    def get_tracks_needing_final_decision(self):
+        return [t for t in self.tracks.values() if t.needs_final_decision]
 
     def get_finalized_tracks(self):
         return self.finalized_tracks
