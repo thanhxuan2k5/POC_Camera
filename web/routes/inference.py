@@ -112,7 +112,12 @@ def start_inference(camera_id: int, settings: LiveStartSettings, request: Reques
         ws_manager.broadcast_to_room_from_thread(main_loop, event_data, str(cam.id))
 
     def on_frame(annotated_frame):
-        _, buf = cv2.imencode(".jpg", annotated_frame, [cv2.IMWRITE_JPEG_QUALITY, 70])
+        # Resize xuống 854x480 để giảm tải WebSocket (1920x1080 quá nặng, gây đen màn hình)
+        h, w = annotated_frame.shape[:2]
+        target_w = 854
+        target_h = int(h * target_w / w)
+        small_frame = cv2.resize(annotated_frame, (target_w, target_h), interpolation=cv2.INTER_LINEAR)
+        _, buf = cv2.imencode(".jpg", small_frame, [cv2.IMWRITE_JPEG_QUALITY, 65])
         b64_frame = base64.b64encode(buf).decode("utf-8")
         frame_data = {"type": "frame", "data": b64_frame}
         ws_manager.broadcast_to_room_from_thread(main_loop, frame_data, str(cam.id))
